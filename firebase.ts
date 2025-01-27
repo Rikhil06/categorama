@@ -6,7 +6,7 @@ import { getFirestore } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: 'AIzaSyCxfDqTKaZAGo6pI-NfnqJyiHxqxyBtv14',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: 'guessr-84aed.firebaseapp.com',
   databaseURL:
     'https://guessr-84aed-default-rtdb.europe-west1.firebasedatabase.app',
