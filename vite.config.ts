@@ -8,7 +8,15 @@ export default defineConfig({
   plugins: [
     react(), 
     Sitemap({hostname: 'https://categorama.netlify.app/'}),
-    VitePluginRadar({ analytics: { id: 'G-4QM1632KQ0', }}),
+    VitePluginRadar({ 
+      analytics: { id: 'G-4QM1632KQ0', },
+       // Google Tag Manager (multiple tag can be set with an array)
+       gtm: [
+        {
+          id: 'GT-TXX3RXPF',
+        }
+      ],
+    }),
   ],
   build: {
     target: "es2022"
