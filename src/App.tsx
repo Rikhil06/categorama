@@ -205,7 +205,7 @@ function App() {
           Categorama
         </h1>
       </header>
-      <main className={`border-4 border-solid border-white md:inset-12 top-20 inset-4 fixed rounded-xl overflow-hidden ${gameState === 'playing' ? 'game-playing' : 'game-paused'}  ${restart === false ? '' : 'restarting'}`}>
+      <main className={`border-4 border-solid border-white md:inset-12 md:top-20 top-20 inset-4 fixed rounded-xl overflow-hidden ${gameState === 'playing' ? 'game-playing' : 'game-paused'}  ${restart === false ? '' : 'restarting'}`}>
         <div className="game flex h-full">
           <div className="reset-anim absolute bg-black w-0 h-full z-10"></div>
           <div className="left-col h-full w-4/12">
