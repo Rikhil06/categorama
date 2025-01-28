@@ -151,35 +151,35 @@ function App() {
   };
 
   // Assume you're extracting the unique ID from the URL
-useEffect(() => {
-  const uniqueIdFromUrl = window.location.hash.slice(1); // Extract the ID from the URL (e.g., #someUniqueId)
-
-  if (uniqueIdFromUrl) {
+  useEffect(() => {
+    const uniqueIdFromUrl = window.location.hash.slice(1); // Extract the ID from the URL (e.g., #someUniqueId)
+  
     const fetchCategories = async () => {
-      try {
-        // Get the document from Firestore using the unique ID
-        const docRef = doc(db, 'UpdatedCategories', uniqueIdFromUrl);
-        console.log(docRef);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const savedCategories = docSnap.data().categories; // Get the saved categories
-          setCategories(savedCategories); // Update the state with the fetched categories
-        } else {
-          console.log('No such document!');
+      if (uniqueIdFromUrl) {
+        try {
+          const docRef = doc(db, 'UpdatedCategories', uniqueIdFromUrl);
+          const docSnap = await getDoc(docRef);
+  
+          if (docSnap.exists()) {
+            const savedCategories = docSnap.data().categories;
+            setCategories(shuffle(savedCategories)); // Shuffle the fetched categories
+          } else {
+            console.log('No such document!');
+          }
+        } catch (error) {
+          console.error('Error fetching the categories:', error);
         }
-      } catch (error) {
-        console.error('Error fetching the categories:', error);
+      } else {
+        setCategories(shuffle(categories)); // Shuffle the default categories on load
       }
     };
-
+  
     fetchCategories();
-  }
-
-  setTimeout(() => {
-    setHideLandingAnimation(true);
-  }, 3500);
-}, [window.location.hash]); // Run the effect whenever the hash changes
+  
+    setTimeout(() => {
+      setHideLandingAnimation(true);
+    }, 3500);
+  }, [window.location.hash]); // Re-run whenever the hash changes
 
 
   return (
