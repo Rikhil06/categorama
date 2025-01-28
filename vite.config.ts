@@ -4,7 +4,7 @@ import Sitemap from 'vite-plugin-sitemap'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), Sitemap()],
+  plugins: [react(), Sitemap({hostname: 'https://categorama.netlify.app/'})],
   build: {
     target: "es2022"
   },
