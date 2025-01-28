@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { AnimatePresence } from "motion/react"
 import * as motion from "motion/react-client"
 import { customAlphabet } from 'nanoid';
+import { Helmet } from 'react-helmet-async';
 
 type Category = {
   id: string;
@@ -178,6 +179,11 @@ useEffect(() => {
 
   return (
     <>
+      <Helmet>
+        <title>Categorama</title>
+        <meta name="description" content="Challenge your quick thinking with Categorama, the fast-paced word game where you name items in categories starting with a random letter. Test your vocabulary skills and race against the clock in this fun game for word lovers!" />
+        <link rel="canonical" href={window.location.origin + '/'} />
+      </Helmet>
       <main className={`border-4 border-solid border-white inset-12 fixed rounded-xl overflow-hidden ${gameState === 'playing' ? 'game-playing' : 'game-paused'}  ${restart === false ? '' : 'restarting'}`}>
         <div className="game flex h-full">
           <div className="reset-anim absolute bg-black w-0 h-full z-10"></div>
