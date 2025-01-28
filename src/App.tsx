@@ -182,7 +182,7 @@ useEffect(() => {
       <Helmet>
         <title>Categorama</title>
         <meta name="description" content="Challenge your quick thinking with Categorama, the fast-paced word game where you name items in categories starting with a random letter. Test your vocabulary skills and race against the clock in this fun game for word lovers!" />
-        <link rel="canonical" href={window.location.hostname} />
+        <link rel="canonical" href={window.location.origin + '/'} />
       </Helmet>
       <main className={`border-4 border-solid border-white inset-12 fixed rounded-xl overflow-hidden ${gameState === 'playing' ? 'game-playing' : 'game-paused'}  ${restart === false ? '' : 'restarting'}`}>
         <div className="game flex h-full">
