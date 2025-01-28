@@ -200,7 +200,12 @@ function App() {
           </motion.div>
         : null}
       </AnimatePresence>
-      <main className={`border-4 border-solid border-white md:inset-12 inset-4 fixed rounded-xl overflow-hidden ${gameState === 'playing' ? 'game-playing' : 'game-paused'}  ${restart === false ? '' : 'restarting'}`}>
+      <header className='flex items-center justify-between md:mx-12 mx-4 my-6'>
+        <h1 className="text-2xl font-normal">
+          Categorama
+        </h1>
+      </header>
+      <main className={`border-4 border-solid border-white md:inset-12 top-20 inset-4 fixed rounded-xl overflow-hidden ${gameState === 'playing' ? 'game-playing' : 'game-paused'}  ${restart === false ? '' : 'restarting'}`}>
         <div className="game flex h-full">
           <div className="reset-anim absolute bg-black w-0 h-full z-10"></div>
           <div className="left-col h-full w-4/12">
