@@ -42,6 +42,7 @@ function App() {
   const [showAddNewCategory, setShowAddNewCategory] = useState(false);
   const [categoryStatusChanged, setCategoryStatusChanged] = useState(false);
   const [numberOfCategories, setNumberOfCategories] = useState(12);
+  const [hideLandingAnimation, setHideLandingAnimation] = useState(false);
 
   const shuffle = (arr: number[]): number[] => [...arr].sort(() => Math.random() - 0.5);
 
@@ -174,6 +175,10 @@ useEffect(() => {
 
     fetchCategories();
   }
+
+  setTimeout(() => {
+    setHideLandingAnimation(true);
+  }, 3500);
 }, [window.location.hash]); // Run the effect whenever the hash changes
 
 
@@ -182,6 +187,19 @@ useEffect(() => {
       <Helmet>
         <link rel="canonical" href={window.location.origin + '/'} />
       </Helmet>
+      <AnimatePresence initial={false}>
+        {hideLandingAnimation === false ?
+          <motion.div 
+            className="bg-black fixed inset-0 z-50"
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0 }}
+            key="box"
+          >
+            <div className="loader absolute top-2/4 left-2/4 -translate-x-1/2 -translate-y-1/2"></div>
+          </motion.div>
+        : null}
+      </AnimatePresence>
       <main className={`border-4 border-solid border-white md:inset-12 inset-4 fixed rounded-xl overflow-hidden ${gameState === 'playing' ? 'game-playing' : 'game-paused'}  ${restart === false ? '' : 'restarting'}`}>
         <div className="game flex h-full">
           <div className="reset-anim absolute bg-black w-0 h-full z-10"></div>
