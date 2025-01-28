@@ -7,7 +7,7 @@ import { VitePluginRadar } from 'vite-plugin-radar'
 export default defineConfig({
   plugins: [
     react(), 
-    Sitemap({hostname: 'https://categorama.netlify.app/'}),
+    Sitemap({hostname: 'https://categorama.co.uk/'}),
     VitePluginRadar({ 
       analytics: { id: 'G-4QM1632KQ0', },
        // Google Tag Manager (multiple tag can be set with an array)
