@@ -13,7 +13,7 @@ export default defineConfig({
        // Google Tag Manager (multiple tag can be set with an array)
        gtm: [
         {
-          id: 'GT-TXX3RXPF',
+          id: 'GTM-WBM2FVZN',
         }
       ],
     }),
