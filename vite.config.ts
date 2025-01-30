@@ -10,12 +10,7 @@ export default defineConfig({
     Sitemap({hostname: 'https://categorama.co.uk/'}),
     VitePluginRadar({ 
       analytics: { id: 'G-4QM1632KQ0', },
-       // Google Tag Manager (multiple tag can be set with an array)
-       gtm: [
-        {
-          id: 'GTM-WBM2FVZN',
-        }
-      ],
+      gtm: { id: 'GTM-WBM2FVZN', }
     }),
   ],
   build: {
