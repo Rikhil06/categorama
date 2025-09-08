@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { AnimatePresence } from "motion/react"
 import * as motion from "motion/react-client"
@@ -10,6 +10,19 @@ import { Helmet } from 'react-helmet-async';
 type Category = {
   id: string;
   Category: string;
+};
+
+type Player = {
+  id: string;
+  name: string;
+  answers: string[];
+};
+
+type Session = {
+  pin: string;
+  status: 'lobby' | 'playing' | 'finished';
+  letter: string;
+  players: Player[];
 };
 
 function createRandomString(length: number) {
@@ -43,8 +56,71 @@ function App() {
   const [categoryStatusChanged, setCategoryStatusChanged] = useState(false);
   const [numberOfCategories, setNumberOfCategories] = useState(12);
   const [hideLandingAnimation, setHideLandingAnimation] = useState(false);
+  const [sessionPin, setSessionPin] = useState<string | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
 
   const shuffle = (arr: number[]): number[] => [...arr].sort(() => Math.random() - 0.5);
+
+    // Assume you're extracting the unique ID from the URL
+  useEffect(() => {
+    const uniqueIdFromUrl = window.location.hash.slice(1); // Extract the ID from the URL (e.g., #someUniqueId)
+  
+    const fetchCategories = async () => {
+      if (uniqueIdFromUrl) {
+        try {
+          const docRef = doc(db, 'UpdatedCategories', uniqueIdFromUrl);
+          const docSnap = await getDoc(docRef);
+  
+          if (docSnap.exists()) {
+            const savedCategories = docSnap.data().categories;
+            setCategories(shuffle(savedCategories)); // Shuffle the fetched categories
+          } else {
+            console.log('No such document!');
+          }
+        } catch (error) {
+          console.error('Error fetching the categories:', error);
+        }
+      } else {
+        setCategories(shuffle(categories)); // Shuffle the default categories on load
+      }
+    };
+  
+    fetchCategories();
+  
+    setTimeout(() => {
+      setHideLandingAnimation(true);
+    }, 3500);
+  }, [window.location.hash]); // Re-run whenever the hash changes
+  
+      // --- Multiplayer: Create a session ---
+  const createSession = async () => {
+    const pin = Math.floor(1000 + Math.random() * 9000).toString();
+    setSessionPin(pin);
+    const sessionRef = doc(db, "sessions", pin);
+    await setDoc(sessionRef, {
+      pin,
+      status: 'lobby',
+      letter: character,
+      players: []
+    });
+    alert(`Session created! Share PIN: ${pin}`);
+  };
+
+    useEffect(() => {
+    if (!sessionPin) return;
+    const sessionRef = doc(db, "sessions", sessionPin);
+    const unsubscribe = onSnapshot(sessionRef, (docSnap) => {
+      const sessionData = docSnap.data() as Session;
+      if (!sessionData) return;
+      setPlayers(sessionData.players);
+      setCharacter(sessionData.letter);
+      setGameState(sessionData.status === 'playing' ? 'playing' : 'paused');
+      if (sessionData.status === 'finished') {
+        pauseTimer();
+      }
+    });
+    return () => unsubscribe();
+  }, [sessionPin]);
 
   const updateTime = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,38 +137,41 @@ function App() {
   };
   
    
-  const startTimer = () => {
+  const startTimer = async () => {
+    if (!sessionPin) {
+      alert('Create a session first!');
+      return;
+    }
     if (gameState === 'paused') {
+      await updateDoc(doc(db, "sessions", sessionPin), { status: 'playing', letter: character });
       const interval = setInterval(() => {
         setTime((prev) => {
           if (prev <= 1) {
-            clearInterval(interval); // Stop the timer when it reaches 0
-            setGameState('paused'); // Optional: Update the game state when the timer stops
-            setTime(120);
+            clearInterval(interval);
+            setGameState('paused');
+            setTime(0);
+            updateDoc(doc(db, "sessions", sessionPin), { status: 'finished' });
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
-      setTimeInterval(interval); // Store the interval ID to manage the timer elsewhere
+      setTimeInterval(interval);
       setGameState('playing');
     } else {
       pauseTimer();
-      setGameState('paused');
     }
-  };  
+  };
 
   const pauseTimer = () => {
-    if (timeInterval !== null) {
-      clearInterval(timeInterval);
-    }
+    if (timeInterval) clearInterval(timeInterval);
     setGameState('paused');
-  }
+  };
+
+  
 
   const resetTimer = () => {
-    if (timeInterval !== null) {
-      clearInterval(timeInterval);
-    }
+    if (timeInterval) clearInterval(timeInterval);
     setGameState('paused');
     setRestart(true);
     setTimeout(() => { setTime(120); setCharacter(createRandomString(1)); setRestart(false); setCategories(shuffle(categories))} ,1000);
@@ -150,40 +229,40 @@ function App() {
     }
   };
 
-  // Assume you're extracting the unique ID from the URL
-  useEffect(() => {
-    const uniqueIdFromUrl = window.location.hash.slice(1); // Extract the ID from the URL (e.g., #someUniqueId)
-  
-    const fetchCategories = async () => {
-      if (uniqueIdFromUrl) {
-        try {
-          const docRef = doc(db, 'UpdatedCategories', uniqueIdFromUrl);
-          const docSnap = await getDoc(docRef);
-  
-          if (docSnap.exists()) {
-            const savedCategories = docSnap.data().categories;
-            setCategories(shuffle(savedCategories)); // Shuffle the fetched categories
-          } else {
-            console.log('No such document!');
-          }
-        } catch (error) {
-          console.error('Error fetching the categories:', error);
-        }
-      } else {
-        setCategories(shuffle(categories)); // Shuffle the default categories on load
+  const startGameForPlayers = async () => {
+  if (!sessionPin) return;
+  const sessionRef = doc(db, "sessions", sessionPin);
+
+  // Reset timer
+  setTime(120);
+  setCharacter(createRandomString(1));
+
+  await updateDoc(sessionRef, {
+    status: "playing",
+    letter: character
+  });
+
+    // Start local timer on host
+  const interval = setInterval(() => {
+    setTime(prev => {
+      if (prev <= 1) {
+        clearInterval(interval);
+        setGameState("paused");
+        setTime(0);
+        updateDoc(sessionRef, { status: "finished" });
+        return 0;
       }
-    };
-  
-    fetchCategories();
-  
-    setTimeout(() => {
-      setHideLandingAnimation(true);
-    }, 3500);
-  }, [window.location.hash]); // Re-run whenever the hash changes
+      return prev - 1;
+    });
+  }, 1000);
+  setTimeInterval(interval);
+  setGameState("playing");
+};
 
 
   return (
     <>
+    
       <Helmet>
         <link rel="canonical" href={window.location.origin + '/'} />
       </Helmet>
@@ -200,10 +279,48 @@ function App() {
           </motion.div>
         : null}
       </AnimatePresence>
+
+      {sessionPin && (
+      <div className="bg-gray-900 text-white p-4 mb-4 rounded">
+      <h3 className="text-lg font-semibold">Players Joined ({players.length})</h3>
+      <ul className="list-disc pl-5">
+        {players.map((player) => (
+          <li key={player.id}>{player.name}</li>
+        ))}
+      </ul>
+      <button
+        className="mt-3 bg-green-500 text-white px-4 py-2 rounded font-semibold"
+        onClick={startGameForPlayers}
+      >
+        Start Game
+      </button>
+      </div>
+      )}
+
+      {sessionPin && players.length > 0 && (
+        <div className="bg-gray-800 text-white p-4 mt-4 rounded overflow-auto max-h-64">
+          <h3 className="font-semibold text-lg">Players’ Answers</h3>
+          {players.map(player => (
+            <div key={player.id} className="border-b border-gray-700 py-2">
+              <strong>{player.name}:</strong>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {player.answers.map((a, i) => (
+                  <span key={i} className="px-2 py-1 bg-gray-600 rounded text-sm">
+                    {a || "-"}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <header className='flex items-center justify-between md:mx-12 mx-4 my-6'>
         <h1 className="text-2xl font-normal">
           Categorama
         </h1>
+        {!sessionPin && <button onClick={createSession} className="border px-3 py-2">Create Multiplayer Game</button>}
+        {sessionPin && <span>Session PIN: {sessionPin}</span>}
       </header>
       <main className={`border-4 border-solid border-white md:inset-12 md:top-20 top-20 inset-4 fixed rounded-xl overflow-hidden ${gameState === 'playing' ? 'game-playing' : 'game-paused'}  ${restart === false ? '' : 'restarting'}`}>
         <div className="game flex h-full">
