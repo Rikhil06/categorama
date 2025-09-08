@@ -61,6 +61,14 @@
   background-size: 100% 100%;
 }
 
+.game-finished .category-text{
+  background-size: 100% 0;
+}
+
+.game-finished .category-text h3{
+  opacity: 1;
+}
+
 .reset-anim {
   transition: width 0.5s ease-in-out;
   left: 0;

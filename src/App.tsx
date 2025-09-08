@@ -23,6 +23,7 @@ type Session = {
   status: 'lobby' | 'playing' | 'finished';
   letter: string;
   players: Player[];
+  time: number;
 };
 
 function createRandomString(length: number) {
@@ -58,6 +59,10 @@ function App() {
   const [hideLandingAnimation, setHideLandingAnimation] = useState(false);
   const [sessionPin, setSessionPin] = useState<string | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [session, setSession] = useState<Session | null>(null);
+  const [finishedClass, setFinishedClass] = useState('');
+
+  const isInLobby = session?.status === "lobby";
 
   const shuffle = (arr: number[]): number[] => [...arr].sort(() => Math.random() - 0.5);
 
@@ -101,9 +106,9 @@ function App() {
       pin,
       status: 'lobby',
       letter: character,
-      players: []
+      players: [],
+      time: time,
     });
-    alert(`Session created! Share PIN: ${pin}`);
   };
 
     useEffect(() => {
@@ -111,10 +116,12 @@ function App() {
     const sessionRef = doc(db, "sessions", sessionPin);
     const unsubscribe = onSnapshot(sessionRef, (docSnap) => {
       const sessionData = docSnap.data() as Session;
+      setSession(sessionData);
       if (!sessionData) return;
       setPlayers(sessionData.players);
       setCharacter(sessionData.letter);
       setGameState(sessionData.status === 'playing' ? 'playing' : 'paused');
+      setTime(sessionData.time);
       if (sessionData.status === 'finished') {
         pauseTimer();
       }
@@ -143,7 +150,7 @@ function App() {
       return;
     }
     if (gameState === 'paused') {
-      await updateDoc(doc(db, "sessions", sessionPin), { status: 'playing', letter: character });
+      await updateDoc(doc(db, "sessions", sessionPin), { status: 'playing', letter: character, time: time });
       const interval = setInterval(() => {
         setTime((prev) => {
           if (prev <= 1) {
@@ -231,15 +238,22 @@ function App() {
 
   const startGameForPlayers = async () => {
   if (!sessionPin) return;
+
+  if(!players || players.length === 0){
+    alert("You need at least 1 player to start the game!");
+    return;
+  }
+
   const sessionRef = doc(db, "sessions", sessionPin);
 
   // Reset timer
-  setTime(120);
+  setTime(time);
   setCharacter(createRandomString(1));
 
   await updateDoc(sessionRef, {
     status: "playing",
-    letter: character
+    letter: character,
+    time: time
   });
 
     // Start local timer on host
@@ -249,9 +263,10 @@ function App() {
         clearInterval(interval);
         setGameState("paused");
         setTime(0);
-        updateDoc(sessionRef, { status: "finished" });
+        updateDoc(sessionRef, { status: "finished", time: 0 });
         return 0;
       }
+      updateDoc(sessionRef, { time: prev - 1 });
       return prev - 1;
     });
   }, 1000);
@@ -259,6 +274,18 @@ function App() {
   setGameState("playing");
 };
 
+useEffect(() => {
+  let timeout: NodeJS.Timeout;
+  if (session?.status === 'finished') {
+    timeout = setTimeout(() => {
+      setFinishedClass('game-finished');
+    }, 2000); // 2 seconds
+  } else {
+    setFinishedClass('');
+  }
+
+  return () => clearTimeout(timeout); // cleanup if status changes before 2s
+}, [session?.status]);
 
   return (
     <>
@@ -280,24 +307,26 @@ function App() {
         : null}
       </AnimatePresence>
 
-      {sessionPin && (
-      <div className="bg-gray-900 text-white p-4 mb-4 rounded">
-      <h3 className="text-lg font-semibold">Players Joined ({players.length})</h3>
-      <ul className="list-disc pl-5">
-        {players.map((player) => (
-          <li key={player.id}>{player.name}</li>
-        ))}
-      </ul>
-      <button
-        className="mt-3 bg-green-500 text-white px-4 py-2 rounded font-semibold"
-        onClick={startGameForPlayers}
-      >
-        Start Game
-      </button>
+      {(sessionPin && isInLobby) && (
+      <div className="fixed inset-0 w-2/4 h-2/4 left-2/4 top-2/4 -translate-x-2/4 -translate-y-2/4 z-50 flex flex-col justify-center items-center text-white p-4 mb-4 rounded-xl bg-[#101010]">
+        <h2 className='text-2xl font-bold'>{`Session created! Share PIN: ${sessionPin}`}</h2>
+        <h3 className="text-lg font-semibold">Players Joined ({players.length})</h3>
+        <ul className="list-disc pl-5">
+          {players.map((player) => (
+            <li key={player.id}>{player.name}</li>
+          ))}
+        </ul>
+        <button
+          className="mt-3 bg-green-500 text-white px-4 py-2 rounded font-semibold"
+          onClick={startGameForPlayers}
+          // disabled={players.length === 0}
+        >
+          Start Game
+        </button>
       </div>
       )}
 
-      {sessionPin && players.length > 0 && (
+      {/* {sessionPin && players.length > 0 && (
         <div className="bg-gray-800 text-white p-4 mt-4 rounded overflow-auto max-h-64">
           <h3 className="font-semibold text-lg">Players’ Answers</h3>
           {players.map(player => (
@@ -313,16 +342,18 @@ function App() {
             </div>
           ))}
         </div>
-      )}
+      )} */}
 
       <header className='flex items-center justify-between md:mx-12 mx-4 my-6'>
         <h1 className="text-2xl font-normal">
           Categorama
         </h1>
-        {!sessionPin && <button onClick={createSession} className="border px-3 py-2">Create Multiplayer Game</button>}
-        {sessionPin && <span>Session PIN: {sessionPin}</span>}
+        <div className='flex items-center gap-3'>
+        {<button onClick={createSession} className="border px-3 py-2">Create Multiplayer Game</button>}
+        {<a href='/join' className="border px-3 py-2">Join Multiplayer Game</a>}
+        </div>
       </header>
-      <main className={`border-4 border-solid border-white md:inset-12 md:top-20 top-20 inset-4 fixed rounded-xl overflow-hidden ${gameState === 'playing' ? 'game-playing' : 'game-paused'}  ${restart === false ? '' : 'restarting'}`}>
+      <main className={`border-4 border-solid border-white md:inset-12 md:top-20 top-20 inset-4 fixed rounded-xl overflow-hidden ${gameState === 'playing' ? 'game-playing' : 'game-paused'}  ${restart === false ? '' : 'restarting'} ${finishedClass}`}>
         <div className="game flex h-full">
           <div className="reset-anim absolute bg-black w-0 h-full z-10"></div>
           <div className="left-col h-full w-4/12">
@@ -403,7 +434,7 @@ function App() {
                     <AnimatePresence initial={false}>
                       {showAllCategories || showAddNewCategory  ?
                       <motion.div 
-                        className={`bg-white absolute ${showAddNewCategory ? 'md:top-[140px] top-[88px]' : 'md:top-[68px] top-[40px]'} w-full left-0 z-20 overflow-scroll h-full pb-5`}
+                        className={`bg-white absolute ${showAddNewCategory ? 'md:top-[140px] top-[88px]' : 'md:top-[68px] top-[40px]'} w-full left-0 z-20 overflow-scroll h-[calc(100vh-88px)] md:h-[calc(100vh-175px)] pb-5`}
                         initial={{ opacity: 0, y: '-100%'}}
                         animate={{ opacity: 1, y: '0'}}
                         exit={{ opacity: 0, y: '-100%'}}

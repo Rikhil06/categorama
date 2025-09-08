@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc, onSnapshot, arrayUnion } from "firebase/firestore";
 import { db } from "../firebase";
 import { customAlphabet } from "nanoid";
+import { AnimatePresence, motion } from "motion/react";
 
 type Player = {
   id: string;
@@ -14,18 +15,19 @@ type Session = {
   status: "lobby" | "playing" | "finished"; // include all possible states
   letter: string;
   players: Player[];
+  time?: number; // Add this
 };
 
 const generateUniqueId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 20);
 
-export default function Connect() {
+export default function Join() {
   const [pin, setPin] = useState("");
   const [name, setName] = useState("");
   const [joined, setJoined] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [answers, setAnswers] = useState<string[]>(Array(12).fill(""));
-
-  const isFinished = session?.status === "finished";
+  const [revealAnswers, setRevealAnswers] = useState<boolean>(false);
+  const [time, setTime] = useState<number>(120);
 
   // Join a session
   const handleJoin = async () => {
@@ -46,7 +48,10 @@ export default function Connect() {
 
     const unsubscribe = onSnapshot(sessionRef, (docSnap) => {
       const data = docSnap.data() as Session;
+      console.log("snapshot status", data.status); 
       setSession(data);
+
+      if (data.time !== undefined) setTime(data.time);
 
       // Disable inputs if game finished
       if (data.status === "finished") setAnswers(prev => [...prev]);
@@ -86,13 +91,15 @@ export default function Connect() {
         <div className="flex flex-col gap-4 w-full max-w-sm">
           <h2 className="text-2xl font-semibold text-center">Join a Categorama Game</h2>
           <input
-            className="p-3 rounded text-black"
+            type="number"
+            onInput={(e: React.ChangeEvent<HTMLInputElement>) => e.target.value = e.target.value.slice(0, 4)}
+            className="p-3 rounded"
             placeholder="Enter Game PIN"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
           />
           <input
-            className="p-3 rounded text-black"
+            className="p-3 rounded"
             placeholder="Enter Your Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -106,11 +113,27 @@ export default function Connect() {
         </div>
       ) : (
         <div className="w-full max-w-lg flex flex-col items-center gap-4">
-          <h2 className="text-xl font-semibold">Waiting for host to start...</h2>
+          {session && session.status === "lobby" && (
+            <AnimatePresence>
+              <motion.h2 className="text-xl font-semibold" exit={{ opacity: 0 }}>Waiting for host to start...</motion.h2>
+            </AnimatePresence>
+          )}
           {session && session.status === "playing" && (
-            <>
-              <h3 className="text-4xl font-bold my-4">Letter: {session.letter}</h3>
-              <div className="grid grid-cols-1 gap-3 w-full">
+            <AnimatePresence>
+              <motion.div className="text-4xl font-bold my-4" exit={{ opacity: 0 }}>
+                {Math.floor(time / 60).toString().padStart(2, "0")}:
+                {(time % 60).toString().padStart(2, "0")}
+              </motion.div>
+            </AnimatePresence>
+          )}
+          {session && (session.status === "playing" || revealAnswers === true) && (
+            <AnimatePresence>
+              <motion.h3 className="text-4xl font-bold my-4" exit={{ opacity: 0 }}>Letter: {session.letter}</motion.h3>
+            </AnimatePresence>
+          )}
+          {session && (session.status === "playing" || revealAnswers === true) && (
+            <AnimatePresence>
+              <motion.div className="grid grid-cols-1 gap-3 w-full" key="modal" exit={{ opacity: 0 }}>
                 {answers.map((answer, i) => (
                   <input
                     key={i}
@@ -119,16 +142,21 @@ export default function Connect() {
                     value={answer}
                     onChange={(e) => handleChange(i, e.target.value)}
                     disabled={session.status === "finished"}
-                    className="p-3 rounded text-black w-full"
+                    className="p-3 rounded text-white w-full"
                   />
                 ))}
-              </div>
-               {isFinished && (
-                    <p className="mt-4 text-red-400 font-semibold">
-                        Time's up! Answers are locked.
-                    </p>
-                )}
-            </>
+              </motion.div>
+            </AnimatePresence>
+          )}
+          {session && session.status === "finished" && (
+            <AnimatePresence>
+              <motion.div className={`${revealAnswers === false ? '' : 'hidden' } text-center`} exit={{ opacity: 0 }}>
+                <p className="mt-4 text-red-400 text-4xl font-semibold mb-5">
+                    Time's up! Answers are locked.
+                </p>
+                <button className="mt-3 bg-green-500 text-white px-4 py-2 rounded font-semibold" onClick={() => setRevealAnswers(true)}>Reveal answers!</button>
+              </motion.div>
+            </AnimatePresence>
           )}
         </div>
       )}
